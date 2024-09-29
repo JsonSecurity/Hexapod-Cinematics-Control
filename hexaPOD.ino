@@ -36,15 +36,9 @@ int duty1;
 //----Moviemintos----
 int velocidad = 5;
 
-int angulo_mov = 30;
-int angulo_inclinacion = 20;
-int angulo_3 = 20;
-int angulo_apertura = 30;
-int ini_noventa = 90;
-
 //------------pMin, pMax---------------
 int matrisServoControl[18][2] = {
-  { 80, 525 },
+  { 80, 525 }, 
   { 120, 600 },
   { 120, 600 },
 
@@ -60,11 +54,11 @@ int matrisServoControl[18][2] = {
   { 140, 620 },
   { 150, 640 },
 
-  { 100, 535 },
+  { 80, 680 },
   { 120, 620 },
   { 75, 565 },
 
-  { 110, 580 },
+  { 140, 620 },
   { 450, 6750 },
   { 590, 6650 }
 };
@@ -98,12 +92,12 @@ double avance_general = 5; // avance por grados - menos pierde velocidad (7)
 
 //--distancia de movimientos--
 double altura = 75;
-double distancia = 15;
+double distancia = 18; // 15
 
 double desZ = 40;
 double desY = 40;
 
-double dis_x = 60;
+double dis_x = 70; // 60 
 
 double X = distancia;
 double Z;
@@ -422,6 +416,8 @@ void movUP() {
 
   Z2 = desZ;
   Y2 = desY;
+  int x_des = 0;
+  
 
   double InicialPosition[][3] = {
     //x   y     z
@@ -431,7 +427,7 @@ void movUP() {
 
     { dis_x, Y2, Z },
     { 85, 0, Z },
-    { dis_x, -30, Z }
+    { dis_x, -Y2, Z }
   };
 
   double FinalPosition[][3] = {
@@ -639,9 +635,9 @@ void loop() {
   if (miBT.available()) {
     DATO = miBT.read();
 
-    if (sleep_hex) {
-      Serial.println(DATO);
-      CalibrarServoMotor();
+ 
+      //Serial.println(DATO);
+      //CalibrarServoMotor();
       Velocidad();
 
       switch (DATO) {
@@ -661,9 +657,7 @@ void loop() {
           movRG();
           break;
       }
-    }else {
-      CustomA(false);
-    }
+
   }
   delay(30);
 }
