@@ -3,41 +3,35 @@
 #include <Servo.h>
 #include <SoftwareSerial.h>
 
-//---------BT--------------
 SoftwareSerial miBT(10, 11);
 
-//--Variables-de-control--
+// var control
 char DATO = 0;
-bool comandos = false;
+
+bool calibrate = false;
+
+String array_paramiters[6];
+
 char clave = 'z';
+String paramiter;
+
+bool speed_control= false;
 bool sleep_hex = false;
 
-String command_servo;
-String command_pMin;
-String command_pMax;
-String command_angulo;
-
-//--------Calibracion------
+// Calibracion
 int indice = 0;
-int cont = 0;
-int len = 40;
 
-String array_comandos[40];
-
-//-------Servo-17-18------
+// Servo 17-18
 Servo servo_one;
 Servo servo_two;
 
-//----------------------Adafruit_PWMServoDriver------------------------
+// Adafruit_PWMServoDriver
 Adafruit_PWMServoDriver servo_placa = Adafruit_PWMServoDriver(0x40);
 
 int duty1;
 
-//----Moviemintos----
-int velocidad = 5;
-
-//------------pMin, pMax---------------
-int matrisServoControl[18][2] = {
+// { PMIN, PMAX }
+int matrizPulsos[18][2] = {
   { 80, 525 }, 
   { 120, 600 },
   { 120, 600 },
@@ -63,12 +57,12 @@ int matrisServoControl[18][2] = {
   { 590, 6650 }
 };
 
-//---Dimension----
+// Dimension
 double ejeX = 119.88;
 double ejeY = 36.68;
 double ejeZ = 70;
 
-//---Angulos---
+// Angulos
 double gamma;
 
 double alfa;
@@ -80,24 +74,25 @@ double beta;
 double hipoXY;
 double lineaAlfa;
 
-//---Medidas---
+// Medidas
 double COXA = 28;
 double FEMUR = 55;
 double TIBIA = 80;
 
-//---Control-Movimiento---
+// Control Movimiento
 double max_percent = 100;  // porcentaje maximo
 int patas = 6;             // numero de patas involucradas
 double avance_general = 5; // avance por grados - menos pierde velocidad (7)
 
-//--distancia de movimientos--
+// Distancia de movimientos
 double altura = 75;
-double distancia = 18; // 15
+double distancia = 18;
+int velocidad = 5;
 
 double desZ = 40;
 double desY = 40;
 
-double dis_x = 70; // 60 
+double dis_x = 70;
 
 double X = distancia;
 double Z;
@@ -106,25 +101,25 @@ double Z2;
 double Y2;
 
 void setup() {
-  //-----------------------------bluetooth----------------------------
+  // Bluetooth
   miBT.begin(38400);
-  //--------------------------MonitorSerial---------------------------
+
+  // Monitor Serial
   Serial.begin(9600);
-  //--------------------------PWMServoDriver--------------------------
+
+  // PWMServoDriver
   servo_placa.begin();
-  servo_placa.setPWMFreq(60);  //Frecuencia PWM de 60Hz o T=16,66ms
+  servo_placa.setPWMFreq(60);  // Frecuencia PWM de 60Hz o T=16,66ms
 
-  servo_one.attach(8, 450, 6750);
-  servo_two.attach(9, 590, 6650);
+  // Inicialization of two servos free
+  servo_one.attach(8, matrizPulsos[16][0], matrizPulsos[16][1]);
+  servo_two.attach(9, matrizPulsos[17][0], matrizPulsos[17][1]);
 
-  //-------------------------inicial position-------------------------
-
-  //------------------------------demora------------------------------
   delay(1000);
 }
 
 void SetServoMovGeneral(uint8_t servo, double angulo) {
-  duty1 = map(angulo, 0, 180, matrisServoControl[servo][0], matrisServoControl[servo][1]);
+  duty1 = map(angulo, 0, 180, matrizPulsos[servo][0], matrizPulsos[servo][1]);
   servo_placa.setPWM(servo, 0, duty1);
 }
 
@@ -145,54 +140,30 @@ void SetCalibrateServo(uint8_t n_servo1, int angulo1, int pMin, int pMax) {
   }
 }
 
-void CalibrarServoMotor() {
-  if (DATO == clave) {
-    comandos = !comandos;
-  }
+void ServoCalibrate() {
+  calibrate = (DATO == clave) ? !calibrate : calibrate;
 
-  if (comandos) {
-    if (indice <= len && DATO != clave) {
-      Serial.print(String(DATO) + " ");
-      array_comandos[indice] = String(DATO);
-      indice++;
-    }
-    delay(10);
-  }
-
-  if (!comandos && DATO == clave) {
-    for (int i = 0; i <= indice - 1; i++) {
-      if (cont == 0) {
-        command_servo += array_comandos[i];
-      } else if (cont == 1) {
-        command_angulo += array_comandos[i];
-      } else if (cont == 2) {
-        command_pMin += array_comandos[i];
-      } else if (cont == 3) {
-        command_pMax += array_comandos[i];
+  if (calibrate) {
+      if (DATO != '-') {
+        paramiter += String(DATO);
+      }else {
+        array_paramiters[indice] = paramiter;
+        paramiter = "";
+        indice++;
       }
-
-      if (array_comandos[i] == "-") {
-        cont++;
-      }
-    }
-
+  }
+  delay(10);
+  if (!calibrate && indice > 0) {
     Serial.println("");
-    Serial.println("servo: " + String(command_servo.toInt()));
-    Serial.println("angulo: " + String(command_angulo.toInt()));
-    Serial.println("pmin: " + String(command_pMin.toInt()));
-    Serial.println("pmax: " + String(command_pMax.toInt()));
-
-    SetCalibrateServo(command_servo.toInt(), command_angulo.toInt(), command_pMin.toInt(), command_pMax.toInt());
+    Serial.println("[+] SERVO: " + String(array_paramiters[1]));
+    Serial.println("[+] ANGULO: " + String(array_paramiters[2]));
+    Serial.println("[+] PMIN: " + String(array_paramiters[3]));
+    Serial.println("[+] PMAX: " + String(array_paramiters[4]));
+  
+    SetCalibrateServo(array_paramiters[1].toInt(), array_paramiters[2].toInt(), array_paramiters[3].toInt(), array_paramiters[4].toInt());
     delay(100);
 
     indice = 0;
-    cont = 0;
-
-    command_servo = "";
-    command_angulo = "";
-    command_pMin = "";
-    command_pMax = "";
-    delay(100);
   }
 }
 
@@ -220,15 +191,12 @@ double Beta(double lineaAlfa) {
 }
 
 void CinematicaInversa(double avance, double InicialPosition[][3], double FinalPosition[][3], double FinalPosition2[][3]) {
-
-  double avance_percent = avance_general;  // salto en porcentaje
-  velocidad = 10;
   double ProcessPosition[6][3] = {};
   double ProcessPosition2[6][3] = {};
 
   while (true) {
 
-    for (double percent = 1; percent <= max_percent; percent += avance_percent) {  // iteraciones generales hasta que este en 100%
+    for (double percent = 1; percent <= max_percent; percent += avance_general) {  // iteraciones generales hasta que este en 100%
       //-------------------------------------------------------
       for (int i = 0; i < patas; i++) {
         for (int j = 0; j < 3; j++) {
@@ -279,7 +247,7 @@ void CinematicaInversa(double avance, double InicialPosition[][3], double FinalP
 
     //-------------------------------------------------------------------------------------------------------------------------------
 
-    for (double percent = 1; percent <= max_percent; percent += avance_percent) {  // iteraciones generales hasta que este en 100%
+    for (double percent = 1; percent <= max_percent; percent += avance_general) {  // iteraciones generales hasta que este en 100%
       //-------------------------------------------------------
       for (int i = 0; i < patas; i++) {
         for (int j = 0; j < 3; j++) {
@@ -336,12 +304,11 @@ void CinematicaInversa(double avance, double InicialPosition[][3], double FinalP
 }
 
 void BasicTraslation(double Inicial[][3], double Traslation[][3], bool hex_status) {
-  double avance_percent = 3;  // salto en porcentaje
-  Serial.println(String(sleep_hex) + " --- "+ String(hex_status));
+  avance_general = 3;
+
   // matrices temporales
   double ProcessPosition[6][3] = {};
   bool tmp = false;
-  
 
   if (hex_status) {
     sleep_hex = true;
@@ -351,7 +318,7 @@ void BasicTraslation(double Inicial[][3], double Traslation[][3], bool hex_statu
     sleep_hex = !sleep_hex;
   }
   
-  for (double percent = 1; percent <= max_percent; percent += avance_percent) {  // iteraciones generales hasta que este en 100%
+  for (double percent = 1; percent <= max_percent; percent += avance_general) {  // iteraciones generales hasta que este en 100%
       //-------------------------------------------------------
       if (sleep_hex) {
         for (int i = 0; i < patas; i++) {
@@ -617,17 +584,16 @@ void CustomA(bool hex_status) {
   BasicTraslation(InicialPosition, Sleep, hex_status);
 }
 
-bool control_velocidad = false;
 void Velocidad() {
   if (DATO == 'v') {
-    control_velocidad = !control_velocidad;
+    speed_control = !speed_control;
     return;
   }
 
-  if (control_velocidad) {
+  if (speed_control) {
     avance_general = String(DATO).toInt();
     Serial.println("Avance: " + String(avance_general));
-    control_velocidad = false;
+    speed_control = false;
   }
 }
 
@@ -635,29 +601,27 @@ void loop() {
   if (miBT.available()) {
     DATO = miBT.read();
 
- 
-      //Serial.println(DATO);
-      //CalibrarServoMotor();
-      Velocidad();
+    //Serial.println(DATO);
+    ServoCalibrate();
+    Velocidad();
 
-      switch (DATO) {
-        case 'i':
-          CustomA(true);
-          break;
-        case 'u':
-          movUP();
-          break;
-        case 'd':
-          movDW();
-          break;
-        case 'l':
-          movLF();
-          break;
-        case 'r':
-          movRG();
-          break;
-      }
-
+    switch (DATO) {
+      case 'i':
+        //CustomA(true);
+        break;
+      case 'u':
+        movUP();
+        break;
+      case 'd':
+        movDW();
+        break;
+      case 'l':
+        movLF();
+        break;
+      case 'r':
+        movRG();
+        break;
+    }
   }
   delay(30);
 }
